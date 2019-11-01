@@ -1,7 +1,6 @@
 ---
 - name: create vm on azure
   hosts: localhost
-  connection: local
   tasks:
   - name: create a resource group
     azure_rm_resourcegroup:
