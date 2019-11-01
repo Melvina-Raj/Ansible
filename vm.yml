@@ -1,0 +1,65 @@
+---
+- name: create vm on azure
+  hosts: localhost
+  connection: local
+  tasks:
+  - name: create a resource group
+    azure_rm_resourcegroup:
+	 name: Test-CamppRg
+      location: eastus
+  - name: create virtual newtwork
+    azure_rm_virtualnetwork:
+      resource_group: Test-CamppRg
+	  name: Test-CamppVnet
+      address_prefixes: "10.0.0.0/16"
+  - name: Add subnet
+    azure_rm_subnet:
+      resource_group: Test-CamppRg
+	  name: Test-CamppSubnet
+      address_prefix: "10.0.1.0/24"
+      virtual_network: Test-CamppVnet
+  - name: Create public IP address
+    azure_rm_publicipaddress:
+	 resource_group: Test-CamppRg
+      allocation_method: Static
+      name: myPublicIP
+    register: output_ip_address
+  - name: Dump public IP for VM which will be created
+   debug:
+      msg: "The public IP is {{ output_ip_address.state.ip_address }}."
+  - name: Create Network Security Group that allows SSH
+    azure_rm_securitygroup:
+      resource_group: Test-CamppRg
+	   name: Test-CamppNSG
+      rules:
+        - name: SSH
+          protocol: Tcp
+          destination_port_range: 22
+		  access: Allow
+          priority: 1001
+          direction: Inbound
+  - name: Create virtual network inteface card
+    azure_rm_networkinterface:
+	resource_group: Test-CamppRg
+      name: myNIC
+      virtual_network: Test-CamppVnet
+      subnet: Test-CamppSubnet
+      public_ip_name: myPublicIP
+	   security_group: Test-CamppNSG
+  - name: Create VM
+    azure_rm_virtualmachine:
+      resource_group: Test-CamppRg
+      name: myVM
+	  vm_size: Standard_D2_v2
+      admin_username: vmadmin
+      admin_password: Vmadmin@12345
+      os_type: Windows
+      network_interfaces: myNIC
+	  subnet_name: Test-CamppSubnet
+      virtual_network_name: Test-CamppVnet
+      image:
+        offer: WindowsServer
+        sku: 2012-Datacenter
+        publisher: MicrosoftWindowsServer
+        version: latest
+      managed_disk_type: Standard_LRS
